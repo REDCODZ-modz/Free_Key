@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RC GHOST - Ambil Kunci Gratis Harian</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Fira Code', monospace; background-color: #000; color: #00ff41; overflow: hidden; }
+        
+        #matrix-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.3; }
+
+        .terminal-card { 
+            background: rgba(0, 20, 0, 0.85); 
+            border: 1px solid #00ff41; 
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2), inset 0 0 10px rgba(0, 255, 65, 0.1);
+            backdrop-filter: blur(5px); 
+            animation: fadeIn 1s ease-out;
+        }
+
+        .glitch { font-weight: 700; position: relative; text-shadow: 0 0 5px #00ff41, 0 0 10px #00ff41; }
+        .glitch:before, .glitch:after { content: 'KUNCI GRATIS HARIAN'; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
+        .glitch:before { left: 2px; text-shadow: -2px 0 #ff00c1; animation: glitch-anim-1 2.5s infinite linear reverse; }
+        .glitch:after { left: -2px; text-shadow: -2px 0 #00fff9, 2px 2px #ff00c1; animation: glitch-anim-2 2s infinite linear reverse; }
+        
+        @keyframes glitch-anim-1 { 0%, 100% { clip-path: inset(45% 0 50% 0); } 25% { clip-path: inset(0 0 0 0); } 50% { clip-path: inset(80% 0 15% 0); } 75% { clip-path: inset(50% 0 45% 0); } }
+        @keyframes glitch-anim-2 { 0%, 100% { clip-path: inset(10% 0 85% 0); } 25% { clip-path: inset(60% 0 30% 0); } 50% { clip-path: inset(30% 0 60% 0); } 75% { clip-path: inset(0 0 0 0); } }
+
+        .terminal-button { border: 1px solid #00ff41; text-shadow: 0 0 3px #00ff41; box-shadow: 0 0 7px rgba(0, 255, 65, 0.3); transition: all 0.2s; }
+        .terminal-button:hover:not(:disabled) { background: #00ff41; color: #000; text-shadow: none; box-shadow: 0 0 15px rgba(0, 255, 65, 0.7); transform: translateY(-2px); }
+        .terminal-button:disabled { cursor: not-allowed; opacity: 0.5; }
+        
+        .key-display-box { display: none; margin-top: 1.5rem; padding: 1rem; border: 1px dashed #00ff41; background-color: #0d0d0d; text-align: center; }
+        .key-text { font-size: 1.25rem; font-weight: bold; color: #f0f0f0; letter-spacing: 2px; border-right: 2px solid #00ff41; white-space: nowrap; overflow: hidden; }
+        .copy-btn { margin-top: 1rem; background: transparent; padding: 0.5rem 1rem; font-size: 0.8rem; }
+        .copy-btn.copied { background-color: #00ff41; color: #000; border-color: #00ff41; text-shadow: none; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
+        @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00ff41; } }
+
+
+        .animated-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(to top, rgba(0,20,0,0.9), transparent);
+            text-align: center;
+            font-size: 0.8rem;
+            color: #00a82e; 
+            text-shadow: 0 0 3px #00ff41;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+    <canvas id="matrix-canvas"></canvas>
+
+    <div class="w-full max-w-md">
+        <div class="terminal-card rounded-lg p-6 flex flex-col">
+            
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold glitch">KUNCI GRATIS HARIAN</h1>
+                <p class="text-xs text-cyan-400 mt-2" id="current-date"></p>
+            </div>
+
+            <div class="space-y-4">
+                <button id="fetch-key-btn" onclick="fetchDailyKey()" class="terminal-button w-full py-3 rounded-md font-bold"> [ TAMPILKAN KUNCI HARI INI ] </button>
+            </div>
+
+            <div id="key-container" class="key-display-box">
+                <p id="key-text" class="key-text"></p>
+                <button id="copy-btn" onclick="copyKey()" class="terminal-button copy-btn">[ SALIN KUNCI ]</button>
+            </div>
+
+        </div>
+    </div>
+
+
+    <footer class="animated-footer">
+        <p id="status-log"></p>
+    </footer>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyDCZrt54NfMZkTzpsX-ZJBhA2Qh9a4ATQU",
+          authDomain: "keycodm-add11.firebaseapp.com",
+          projectId: "keycodm-add11",
+          storageBucket: "keycodm-add11.appspot.com",
+          messagingSenderId: "203989625230",
+          appId: "1:203989625230:web:7fd9631e5fa9d02e76dcdf",
+          measurementId: "G-6PDW8Z787R"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+
+
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const alphabet = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン01';
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const rainDrops = Array(Math.floor(columns)).fill(1);
+        const drawMatrix = () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#00ff41';
+            ctx.font = fontSize + 'px monospace';
+            for(let i = 0; i < rainDrops.length; i++) {
+                const text = alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+                ctx.fillText(text, i * fontSize, rainDrops[i] * fontSize);
+                if(rainDrops[i] * fontSize > canvas.height && Math.random() > 0.975){
+                    rainDrops[i] = 0;
+                }
+                rainDrops[i]++;
+            }
+        };
+        setInterval(drawMatrix, 40);
+
+        async function typeWriter(element, text, speed = 50) {
+            element.style.animation = 'none';
+            element.textContent = '';
+            const len = text.length;
+            element.style.width = `${len}ch`;
+            element.style.animation = `typing ${len * (speed / 1000)}s steps(${len}, end), blink-caret .75s step-end infinite`;
+            
+            for (let i = 0; i < len; i++) {
+                element.textContent += text.charAt(i);
+                await new Promise(resolve => setTimeout(resolve, speed));
+            }
+            element.style.borderRightColor = 'transparent';
+        }
+
+        window.fetchDailyKey = async function() {
+
+            const fetchBtn = document.getElementById('fetch-key-btn');
+            const keyContainer = document.getElementById('key-container');
+            const keyTextElement = document.getElementById('key-text');
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = "[ MENGAMBIL DATA... ]";
+            try {
+                const today = new Date();
+                const year = today.getUTCFullYear();
+                const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(today.getUTCDate()).padStart(2, '0');
+                const docId = `${year}-${month}-${day}`;
+                const docRef = doc(db, "freeKeys", docId);
+                const docSnap = await getDoc(docRef);
+                keyContainer.style.display = 'block';
+                if (docSnap.exists()) {
+                    await typeWriter(keyTextElement, docSnap.data().key);
+                } else {
+                    await typeWriter(keyTextElement, "Kunci Belum Tersedia");
+                }
+            } catch (error) {
+                keyContainer.style.display = 'block';
+                await typeWriter(keyTextElement, "Gagal Terhubung");
+            } finally {
+                fetchBtn.disabled = false;
+                fetchBtn.textContent = "[ TAMPILKAN KUNCI HARI INI ]";
+            }
+        }
+
+        window.copyKey = function() {
+            // ... (Fungsi ini tidak diubah)
+            const keyToCopy = document.getElementById('key-text').textContent;
+            const copyBtn = document.getElementById('copy-btn');
+            if (keyToCopy && !keyToCopy.includes(" ")) {
+                navigator.clipboard.writeText(keyToCopy).then(() => {
+                    copyBtn.textContent = "[ TERSALIN! ]";
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.textContent = "[ SALIN KUNCI ]";
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                });
+            }
+        }
+
+
+        const statusLogElement = document.getElementById('status-log');
+        const statusMessages = [
+            "RC GHOST SYSTEM v5.1 :: ONLINE",
+            "Establishing secure connection...",
+            "System scan complete. No threats detected.",
+            "Awaiting user command...",
+            "All protocols nominal."
+        ];
+        let messageIndex = 0;
+
+        async function animateStatusLog() {
+            await typeWriter(statusLogElement, statusMessages[messageIndex], 30);
+            messageIndex = (messageIndex + 1) % statusMessages.length;
+        }
+
+
+        setInterval(animateStatusLog, 5000);
+
+        animateStatusLog();
+
+    </script>
+</body>
+</html>
+
