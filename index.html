@@ -40,7 +40,6 @@
         @keyframes typing { from { width: 0 } to { width: 100% } }
         @keyframes blink-caret { from, to { border-color: transparent } 50% { border-color: #00ff41; } }
 
-
         .animated-footer {
             position: fixed;
             bottom: 0;
@@ -79,34 +78,14 @@
         </div>
     </div>
 
-
     <footer class="animated-footer">
-        <p id="status-log"></p>
+        <p id="status-log">RC GHOST SYSTEM v5.1 :: ONLINE</p>
     </footer>
 
-    <!-- Firebase SDK -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyDCZrt54NfMZkTzpsX-ZJBhA2Qh9a4ATQU",
-          authDomain: "keycodm-add11.firebaseapp.com",
-          projectId: "keycodm-add11",
-          storageBucket: "keycodm-add11.appspot.com",
-          messagingSenderId: "203989625230",
-          appId: "1:203989625230:web:7fd9631e5fa9d02e76dcdf",
-          measurementId: "G-6PDW8Z787R"
-        };
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
+    <script>
         document.getElementById('current-date').textContent = new Date().toLocaleDateString('id-ID', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
-
 
         const canvas = document.getElementById('matrix-canvas');
         const ctx = canvas.getContext('2d');
@@ -146,30 +125,44 @@
             element.style.borderRightColor = 'transparent';
         }
 
-        window.fetchDailyKey = async function() {
+        function getSecretValue(secret) {
+            if (!secret) return 0;
+            let value = 0;
+            for (let i = 0; i < secret.length; i++) {
+                value += secret.charCodeAt(i);
+            }
+            return value;
+        }
 
+        window.fetchDailyKey = async function() {
             const fetchBtn = document.getElementById('fetch-key-btn');
             const keyContainer = document.getElementById('key-container');
             const keyTextElement = document.getElementById('key-text');
             fetchBtn.disabled = true;
-            fetchBtn.textContent = "[ MENGAMBIL DATA... ]";
+            fetchBtn.textContent = "[ MENGHITUNG... ]";
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             try {
+                const secret = "L1MB0O";
+                const prefix = "RC_GH-";
+                const secretValue = getSecretValue(secret);
+                
                 const today = new Date();
-                const year = today.getUTCFullYear();
-                const month = String(today.getUTCMonth() + 1).padStart(2, '0');
-                const day = String(today.getUTCDate()).padStart(2, '0');
-                const docId = `${year}-${month}-${day}`;
-                const docRef = doc(db, "freeKeys", docId);
-                const docSnap = await getDoc(docRef);
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                
+                const dateSeed = parseInt(`${year}${month}${day}`);
+                const encryptedKeyNumber = ((dateSeed * 997) + secretValue) % 89999999 + 10000000;
+                const finalKey = `${prefix}${Math.floor(encryptedKeyNumber)}`;
+
                 keyContainer.style.display = 'block';
-                if (docSnap.exists()) {
-                    await typeWriter(keyTextElement, docSnap.data().key);
-                } else {
-                    await typeWriter(keyTextElement, "Kunci Belum Tersedia");
-                }
+                await typeWriter(keyTextElement, finalKey);
+
             } catch (error) {
                 keyContainer.style.display = 'block';
-                await typeWriter(keyTextElement, "Gagal Terhubung");
+                await typeWriter(keyTextElement, "Gagal Menghitung");
             } finally {
                 fetchBtn.disabled = false;
                 fetchBtn.textContent = "[ TAMPILKAN KUNCI HARI INI ]";
@@ -177,7 +170,6 @@
         }
 
         window.copyKey = function() {
-            // ... (Fungsi ini tidak diubah)
             const keyToCopy = document.getElementById('key-text').textContent;
             const copyBtn = document.getElementById('copy-btn');
             if (keyToCopy && !keyToCopy.includes(" ")) {
@@ -191,27 +183,6 @@
                 });
             }
         }
-
-
-        const statusLogElement = document.getElementById('status-log');
-        const statusMessages = [
-            "RC GHOST SYSTEM v5.1 :: ONLINE",
-            "Establishing secure connection...",
-            "System scan complete. No threats detected.",
-            "Awaiting user command...",
-            "All protocols nominal."
-        ];
-        let messageIndex = 0;
-
-        async function animateStatusLog() {
-            await typeWriter(statusLogElement, statusMessages[messageIndex], 30);
-            messageIndex = (messageIndex + 1) % statusMessages.length;
-        }
-
-
-        setInterval(animateStatusLog, 5000);
-
-        animateStatusLog();
 
     </script>
 </body>
